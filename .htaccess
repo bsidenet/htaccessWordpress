@@ -1,0 +1,74 @@
+# Impedir o acesso direto ao ficheiro .htaccess
+# Prevent direct access to the .htaccess file
+<Files .htaccess>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Protege o wp-config.php, que contém credenciais sensíveis da base de dados
+# Protects wp-config.php, which contains sensitive database credentials
+<Files wp-config.php>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Impede a execução de ficheiros PHP dentro da pasta de uploads (impede a execução de malware)
+# Prevents execution of PHP files inside the uploads folder (prevents malware execution)
+<Directory "/wp-content/uploads/">
+    <FilesMatch "\.php$">
+        Order Deny,Allow
+        Deny from all
+    </FilesMatch>
+</Directory>
+
+# Bloqueia cadeias de consulta maliciosas normalmente utilizadas em ataques
+# Blocks malicious query strings commonly used in attacks
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloqueia caracteres perigosos
+    # Prevents malicious characters
+    RewriteCond %{QUERY_STRING} (\<|%3C|%3E|%00|%2F\.\.|%5C) [NC,OR]
+    RewriteCond %{QUERY_STRING} (base64_encode|union.*select|/etc/passwd|self/environ) [NC,OR]
+    RewriteCond %{QUERY_STRING} (GLOBALS|REQUEST|=|\.\./|\.\.\./) [NC]
+    RewriteRule .* - [F]
+
+    # Evita redireccionamentos externos não autorizados
+    # Prevents unauthorized external redirections
+    RewriteCond %{HTTP_REFERER} !^$
+    RewriteCond %{HTTP_REFERER} !^https://(www\.)?seusite\.com [NC]
+    RewriteRule .*\.(php|html?)$ - [F]
+
+    # Desactiva a listagem de diretórios para evitar a divulgação de informações
+    # Disables directory listing to prevent information disclosure
+    Options -Indexes
+</IfModule>
+
+# Impede que outros sites utilizem as suas imagens, poupando largura de banda
+# Prevents other websites from using your images, saving bandwidth
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP_REFERER} !^$
+    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?seusite\.com [NC]
+    RewriteRule \.(jpg|jpeg|png|gif)$ - [F]
+</IfModule>
+
+# Adiciona cabeçalhos de segurança para proteger contra XSS, Clickjacking e MIME sniffing
+# Adds security headers to protect against XSS, Clickjacking, and MIME sniffing
+<IfModule mod_headers.c>
+    # Proteção contra ataques XSS
+    # Protection against XSS attacks
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # Impede carregamento em iframes externos (clickjacking)
+    # Prevents loading in external iframes (clickjacking)
+    Header set X-Frame-Options "SAMEORIGIN"
+    
+    # Evita a deteção incorreta de tipos MIME
+    # Prevents MIME-type sniffing
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Política de segurança de conteúdo
+    # Content Security Policy - CSP
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'none';"
+</IfModule>
